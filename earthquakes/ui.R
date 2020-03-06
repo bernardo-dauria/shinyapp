@@ -3,13 +3,19 @@ library(shiny)
 library(plotly)
 library(tidyverse)
 library(shinyjs)
-
+library(DT)
+library(ggplot2)
+library(maps)
 
 
 data = read_csv("earthquakes/data.csv")
 
 data = data[,c(1:6,9)]
-data$Magnitude = data$Magnitude
+data = filter(data, Type == "Earthquake")
+data = data[,-5]
+
+data$Longitude = as.numeric(data$Longitude)
+data$Latitude = as.numeric(data$Latitude)
 
 #data$q <- with(data, cut(Magnitude, quantile(Magnitude)))
 #levels(data) <- paste(c("1st", "2nd", "3rd", "4th", "5th"), "Quantile")
@@ -25,55 +31,73 @@ data = drop_na(data, c("Year"))
 ###############################################################
 
 
-ui = shinyUI(fluidPage(
+ui = navbarPage("EARTHQUAKES",
+                
+                tabPanel("Map",
+                         pageWithSidebar(
+                             
+                             # Application title
+                             headerPanel(""),
+                             
+                             # Sidebar with controls to select the dataset and forecast ahead duration
+                             sidebarPanel(
+                                 
+                                 sliderInput("slider", "Time Span:",
+                                             min = min(data$Year), max = max(data$Year),
+                                             value = c(2000,2016)),
+                                 
+                                 sliderInput("slider2", "Magnitude Range:",
+                                             min = min(data$Magnitude), max = max(data$Magnitude),
+                                             value = c(7,9.1)),
+                                 
+                                 downloadButton("report", "Generate report"), width = 3
 
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
+                             ),
+                             
+                             mainPanel(
+                                 
+                                 fluidPage(
+                                     
+                                     fluidRow(
+                                         plotlyOutput("plot"),
+                                         DT::dataTableOutput("plot_brushed_points")
+                                     )
+                                 )
+                             )
+                         )
+                ),
+                tabPanel("Statistics",
+                         
+                         pageWithSidebar(
+                             
+                             # Application title
+                             headerPanel(""),
+                             
+                             # Sidebar with controls to select the dataset and forecast ahead duration
+                             sidebarPanel(
+                                 
+                                 sliderInput("aslider", "Time Span:",
+                                             min = min(data$Year), max = max(data$Year),
+                                             value = c(2000,2016)),
+                                 
+                                 sliderInput("aslider2", "Magnitude Range:",
+                                             min = min(data$Magnitude), max = max(data$Magnitude),
+                                             value = c(7,9.1)),
+                                 
+                                 downloadButton("areport", "Generate report"), width = 3
+                                 
+                             ),
+                             
+                             mainPanel(
+                                 
+                                 plotOutput('plot1')
+                             )
+                         )
+                )
+)
+    
+    
 
-    # Sidebar with a slider input for number of bins
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-            
-        )
-    ),
-    
-    fluidRow(
-        column(width = 9,
-               wellPanel(width = 9,
-                         h4("Points selected by brushing, with brushedPoints():"),
-                         DT::dataTableOutput("plot_brushed_points")
-               )
-        ),
-        column(width = 3,
-               verbatimTextOutput("plot_brushinfo")
-        )
-    ),
-    
-    sliderInput("slider", "Time Span:",
-                min = min(data$Year), max = max(data$Year),
-                value = c(2000,2016)),
-    
-    sliderInput("slider2", "Magnitude Range:",
-                min = min(data$Magnitude), max = max(data$Magnitude),
-                value = c(7,9.1)),
-
-    plotlyOutput("plot"),
-    
-    verbatimTextOutput("event")
-    
-    ##fluidRow(
-    #    column(4, verbatimTextOutput("aaa"))
-    #)
-))
 
 
 server <- function(input, output) {
@@ -108,7 +132,7 @@ server <- function(input, output) {
         )
         
         #locationmode = 'USA-states', 
-        p <- plot_geo(df, sizes = c(1, 250), width = 1200, height = 700) %>%
+        p <- plot_geo(df, width = 900, height = 500) %>%
             add_markers(
                 x = ~Longitude, y = ~Latitude, size = ~Magnitude, color = ~Depth, hoverinfo = "text", sizes = range(exp(df$Magnitude))/40,
                 text = ~paste(df$name, "<br /> Magnitude:", df$Magnitude, "<br />", df$Year, "<br />", df$Latitude, "<br />", df$Longitude),
@@ -164,6 +188,37 @@ server <- function(input, output) {
             print(paste("len",nrow(copy)))
             datatable(copy)
         }
+    })
+    
+    output$report <- downloadHandler(
+
+        filename = "report.pdf",
+        content = function(file) {
+            # Copy the report file to a temporary directory before processing it, in
+            # case we don't have write permissions to the current working dir (which
+            # can happen when deployed).
+            tempReport <- file.path(tempdir(), "report.Rmd")
+            file.copy("report.Rmd", tempReport, overwrite = TRUE)
+            
+            # Set up parameters to pass to Rmd document
+            params <- list(n = input$slider)
+            
+            # Knit the document, passing in the `params` list, and eval it in a
+            # child of the global environment (this isolates the code in the document
+            # from the code in this app).
+            rmarkdown::render(tempReport, output_file = file,
+                              params = params,
+                              envir = new.env(parent = globalenv())
+            )
+        }
+    )
+    
+    output$plot1 <- renderPlot({
+        palette(c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
+                  "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"))
+        
+        par(mar = c(5.1, 4.1, 0, 1))
+        plot(density(data$Magnitude))
     })
     
 }
