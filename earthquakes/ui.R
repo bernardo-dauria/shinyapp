@@ -98,9 +98,6 @@ server <- function(input, output) {
         copy = filter(data, Year>= min(as.numeric(input$slider)) & Year <= max(as.numeric(input$slider)))
         copy = filter(copy, Magnitude>= min(as.numeric(input$slider2)) & Magnitude <= max(as.numeric(input$slider2)))
         
-        #copy = rbind(copy,list(Magnitude=min(data$Magnitude)))
-        #copy = rbind(copy,list(Magnitude=max(data$Magnitude)))
-
         copy
     })
     
@@ -192,7 +189,6 @@ server <- function(input, output) {
         }
     })
     
-    
     output$plot_brushed_points <- DT::renderDataTable({
         
         brush <- event_data("plotly_brushing")
@@ -207,7 +203,7 @@ server <- function(input, output) {
             copy = filter(copy, Latitude>= brush$geo[2,2] & Latitude <= brush$geo[1,2])
             
             #res <- brushedPoints(dataInput(), brush)
-            
+
             #rint("res")
             print(paste("len",nrow(copy)))
             datatable(copy)
@@ -215,25 +211,36 @@ server <- function(input, output) {
     })
     
     output$report <- downloadHandler(
-
+        # For PDF output, change this to "report.pdf"
         filename = "report.pdf",
         content = function(file) {
-            # Copy the report file to a temporary directory before processing it, in
-            # case we don't have write permissions to the current working dir (which
-            # can happen when deployed).
-            tempReport <- file.path(tempdir(), "report.Rmd")
-            file.copy("report.Rmd", tempReport, overwrite = TRUE)
             
-            # Set up parameters to pass to Rmd document
-            params <- list(n = input$slider)
+            brush <- event_data("plotly_brushing")
             
-            # Knit the document, passing in the `params` list, and eval it in a
-            # child of the global environment (this isolates the code in the document
-            # from the code in this app).
-            rmarkdown::render(tempReport, output_file = file,
-                              params = params,
-                              envir = new.env(parent = globalenv())
-            )
+            if (!is.null(brush) && !is.na(brush) && !is.na(brush$geo) && nrow(brush$geo) == 2)
+            {
+                print(brush$geo)
+                
+                copy = filter(data, Year>= min(as.numeric(input$slider)) & Year <= max(as.numeric(input$slider)))
+                copy = filter(copy, Magnitude>= min(as.numeric(input$slider2)) & Magnitude <= max(as.numeric(input$slider2)))
+                copy = filter(copy, Longitude>= brush$geo[1,1] & Longitude <= brush$geo[2,1])
+                copy = filter(copy, Latitude>= brush$geo[2,2] & Latitude <= brush$geo[1,2])
+                
+                # Copy the report file to a temporary directory before processing it, in
+                # case we don't have write permissions to the current working dir (which
+                # can happen when deployed).
+                tempReport <- file.path(tempdir(), "report.Rmd")
+                file.copy("C:/Users/codef/Desktop/shinyapp/earthquakes/report.Rmd", tempReport, overwrite = TRUE)
+                
+                # Knit the document, passing in the `params` list, and eval it in a
+                # child of the global environment (this isolates the code in the document
+                # from the code in this app).
+                rmarkdown::render(tempReport, output_file = file,
+                                  params = list(d = copy),
+                                  envir = new.env(parent = globalenv())
+                )
+            }
+
         }
     )
     

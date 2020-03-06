@@ -1,0 +1,10 @@
+---
+title: "Earthquakes"
+output: pdf_document
+params:
+  d: NA
+---
+
+```{r echo=FALSE}
+params$d
+```
