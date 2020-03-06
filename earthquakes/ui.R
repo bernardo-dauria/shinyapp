@@ -17,15 +17,8 @@ data = data[,-5]
 data$Longitude = as.numeric(data$Longitude)
 data$Latitude = as.numeric(data$Latitude)
 
-#data$q <- with(data, cut(Magnitude, quantile(Magnitude)))
-#levels(data) <- paste(c("1st", "2nd", "3rd", "4th", "5th"), "Quantile")
-#data$q <- as.ordered(data$q)
-
 data$Year = as.numeric(format(strptime(as.character(data$Date), "%m/%d/%Y"), "%Y"))
 data = drop_na(data, c("Year"))
-
-#table(data$Year)
-#plot(density(as.numeric(data$Year)))
 
 
 ###############################################################
@@ -33,7 +26,7 @@ data = drop_na(data, c("Year"))
 
 ui = navbarPage("EARTHQUAKES",
                 
-                tabPanel("Map",
+                tabPanel("Observations",
                          pageWithSidebar(
                              
                              # Application title
@@ -66,7 +59,7 @@ ui = navbarPage("EARTHQUAKES",
                              )
                          )
                 ),
-                tabPanel("Statistics",
+                tabPanel("Density",
                          
                          pageWithSidebar(
                              
@@ -76,16 +69,14 @@ ui = navbarPage("EARTHQUAKES",
                              # Sidebar with controls to select the dataset and forecast ahead duration
                              sidebarPanel(
                                  
-                                 sliderInput("aslider", "Time Span:",
-                                             min = min(data$Year), max = max(data$Year),
-                                             value = c(2000,2016)),
+                                 selectInput("select", label = h3("Country"), 
+                                             choices = list("Chile" = 1, "Indonesia" = 2, "Italy" = 3, "Japan" = 4), 
+                                             selected = 1),
                                  
                                  sliderInput("aslider2", "Magnitude Range:",
                                              min = min(data$Magnitude), max = max(data$Magnitude),
                                              value = c(7,9.1)),
-                                 
-                                 downloadButton("areport", "Generate report"), width = 3
-                                 
+
                              ),
                              
                              mainPanel(
@@ -111,6 +102,39 @@ server <- function(input, output) {
         #copy = rbind(copy,list(Magnitude=max(data$Magnitude)))
 
         copy
+    })
+    
+    kdeInput = reactive({
+        
+        copy = filter(data, Magnitude>= min(as.numeric(input$aslider2)) & Magnitude <= max(as.numeric(input$aslider2)))
+        
+        x = copy[,c(4,3)]
+        
+        if (input$select == 1)#Chile
+        {
+            copy = filter(x, Longitude>=-75 & Longitude <=-65)
+            copy = filter(copy, Latitude>=-60 & Latitude <=-10)
+        }
+        else if (input$select == 1)#Indonesia
+        {
+            copy = filter(x, Longitude>=-20 & Longitude <=20)
+            copy = filter(copy, Latitude>=25 & Latitude <=70)
+        }
+        else if (input$select == 1)#Italy
+        {
+            copy = filter(x, Longitude>=-20 & Longitude <=20)
+            copy = filter(copy, Latitude>=25 & Latitude <=70)
+        }
+        else#Japan
+        {
+            copy = filter(x, Longitude>=100 & Longitude <=200)
+            copy = filter(copy, Latitude>=-25 & Latitude <=25)
+        }
+        
+        bw <- diag(c(1.25, 0.75))
+        kde <- ks::kde(x = copy, H = bw)
+        
+        kde
     })
     
     # renderPlotly() also understands ggplot2 objects!
@@ -214,13 +238,17 @@ server <- function(input, output) {
     )
     
     output$plot1 <- renderPlot({
-        palette(c("#E41A1C", "#377EB8", "#4DAF4A", "#984EA3",
-                  "#FF7F00", "#FFFF33", "#A65628", "#F781BF", "#999999"))
         
-        par(mar = c(5.1, 4.1, 0, 1))
-        plot(density(data$Magnitude))
+        kde = kdeInput()
+        
+        plot(kde, main="Italy")
+        
+        #Plotting with base-graphics, then overlaying map
+        #plot(Latitude~Longitude,copy,pch=16,col="red",asp=1)
+        map("world",add=TRUE,col="gray",fill=FALSE)
     })
     
+    output$value <- renderPrint({ input$select })
 }
 
 
