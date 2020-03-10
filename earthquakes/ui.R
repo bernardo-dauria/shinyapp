@@ -6,9 +6,9 @@ library(shinyjs)
 library(DT)
 library(ggplot2)
 library(maps)
+library(shinythemes)
 
-
-data = read_csv("earthquakes/data.csv")
+data = read_csv("data.csv")
 
 data = data[,c(1:6,9)]
 data = filter(data, Type == "Earthquake")
@@ -49,7 +49,7 @@ ui = navbarPage("EARTHQUAKES",
                              
                              mainPanel(
                                  
-                                 fluidPage(
+                                 fluidPage(theme = shinytheme("cerulean"),
                                      
                                      fluidRow(
                                          plotlyOutput("plot"),
