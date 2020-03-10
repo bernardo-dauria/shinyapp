@@ -262,9 +262,9 @@ server <- function(input, output) {
 ##########
 
 
-shinyApp(ui = ui, server = server, options = list(height = 830, width = 830))
+shinyApp(ui = ui, server = server, options = list(height = 600, width = 1200))
 
 
-
+runGitHub("shinyapp", "codefluence", subdir = "earthquakes")
 
 
