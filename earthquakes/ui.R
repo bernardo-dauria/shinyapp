@@ -9,7 +9,7 @@ ui = navbarPage("EARTHQUAKES",
                              sidebarPanel(
                                  
                                  sliderInput("slider", "Time Span:",
-                                             min = min(data$Year), max = max(data$Year),
+                                             min = 1965, max = 2016,
                                              value = c(2000,2016)),
                                  
                                  sliderInput("slider2", "Magnitude Range:",
