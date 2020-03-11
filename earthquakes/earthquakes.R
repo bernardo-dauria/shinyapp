@@ -10,10 +10,13 @@ library(shinythemes)
 library(scales)
 library(viridis)
 
+
+### data preprocessing ###
+
 data = read_csv("data.csv")
 
 data = data[,c(1:6,9)]
-data = filter(data, Type == "Earthquake")
+data = filter(data, Type == "Earthquake") #Only earthquake are relevant in this app
 data = data[,-5]
 
 data$Longitude = as.numeric(data$Longitude)
@@ -24,10 +27,10 @@ data$ScaledMagnitude = rescale(data$Magnitude, to=c(5,100))
 data = drop_na(data, c("Year"))
 
 
-###############################################################
+### launching ###
 
 
 shinyApp(ui = ui, server = server, options = list(height = 300, width = 600))
 
-#runGitHub("shinyapp", "codefluence", subdir = "earthquakes")
+runGitHub("shinyapp", "codefluence", subdir = "earthquakes")
 
