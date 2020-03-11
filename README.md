@@ -10,9 +10,9 @@
 
 ### Map filters
 
-Use the sliders to select a date span and the range of magnitudes to select the eartquakes that should appear in the map.
-In the map you can zoom in and out with the mouse.
-
+Use the sliders to select a date span and the range of magnitudes to select the eartquakes that should appear in the map.</br>
+In the map you can zoom in and out with the mouse.</br>
+Pay attention, if you don't filter out any earthquake, there will be more than 20000 and the map and the app could run slowly in a laptop.
 
 <img src="images\00.png">
 
