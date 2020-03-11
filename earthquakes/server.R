@@ -1,3 +1,14 @@
+rm(list = ls())
+library(shiny)
+library(plotly)
+library(tidyverse)
+library(shinyjs)
+library(DT)
+library(ggplot2)
+library(maps)
+library(shinythemes)
+library(scales)
+library(viridis)
 
 server <- function(input, output) {
     
