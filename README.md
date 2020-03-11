@@ -2,6 +2,12 @@
 
 </br>
 
+### How to run the app:
+
+<code>runGitHub("shinyapp", "codefluence", subdir = "earthquakes")</code>
+
+</br>
+
 ### Map filters
 
 Use the sliders to select a date span and the range of magnitudes to select the eartquakes that should appear in the map.
@@ -14,13 +20,15 @@ In the map you can zoom in and out with the mouse.
 
 ### Individual earthquake information
 
+Earthquake magnitudes are represented by the size of the circles.</br>
+Earthquake depths are represented by the color of the circles.</br>
 Mouse hover on top of some earthquake point to get its details:
 
 <img src="images\01.png">
 
 </br>
 
-### Generate a pdf report with selected earthquakes in the map
+### How to generate a pdf report with selected earthquakes in the map
 
 - Click on "Box Select" tool:
 
@@ -50,6 +58,8 @@ Mouse hover on top of some earthquake point to get its details:
 
 ### Density plot
 
-- Select a country (Chile, Indonesia, Japan) and a range of magnitudes to see the contours of the kernel density that represent areas with high probability of earthquakes:
+- Go to the "Density" tab.</br>
+
+- Select a country (Chile, Indonesia or Japan) and a range of magnitudes to see the contours of the kernel density that represent areas with high probability of earthquakes:
 
 <img src="images\06.png">
