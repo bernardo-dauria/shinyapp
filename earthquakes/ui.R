@@ -7,6 +7,8 @@ library(DT)
 library(ggplot2)
 library(maps)
 library(shinythemes)
+library(scales)
+library(viridis)
 
 data = read_csv("data.csv")
 
@@ -18,6 +20,7 @@ data$Longitude = as.numeric(data$Longitude)
 data$Latitude = as.numeric(data$Latitude)
 
 data$Year = as.numeric(format(strptime(as.character(data$Date), "%m/%d/%Y"), "%Y"))
+data$ScaledMagnitude = rescale(data$Magnitude, to=c(5,100))
 data = drop_na(data, c("Year"))
 
 
@@ -29,10 +32,8 @@ ui = navbarPage("EARTHQUAKES",
                 tabPanel("Observations",
                          pageWithSidebar(
                              
-                             # Application title
                              headerPanel(""),
                              
-                             # Sidebar with controls to select the dataset and forecast ahead duration
                              sidebarPanel(
                                  
                                  sliderInput("slider", "Time Span:",
@@ -63,14 +64,12 @@ ui = navbarPage("EARTHQUAKES",
                          
                          pageWithSidebar(
                              
-                             # Application title
                              headerPanel(""),
                              
-                             # Sidebar with controls to select the dataset and forecast ahead duration
                              sidebarPanel(
                                  
                                  selectInput("select", label = h3("Country"), 
-                                             choices = list("Chile" = 1, "Indonesia" = 2, "Italy" = 3, "Japan" = 4), 
+                                             choices = list("Chile" = 1, "Indonesia" = 2, "Japan" = 3), 
                                              selected = 1),
                                  
                                  sliderInput("aslider2", "Magnitude Range:",
@@ -106,42 +105,46 @@ server <- function(input, output) {
         copy = filter(data, Magnitude>= min(as.numeric(input$aslider2)) & Magnitude <= max(as.numeric(input$aslider2)))
         
         x = copy[,c(4,3)]
+        r = list("xlim"=c(),"ylim"=c(),"kde"=c())
         
         if (input$select == 1)#Chile
         {
-            copy = filter(x, Longitude>=-75 & Longitude <=-65)
-            copy = filter(copy, Latitude>=-60 & Latitude <=-10)
+            copy = filter(x, Longitude>=-90 & Longitude <=-50)
+            copy = filter(copy, Latitude>=-50 & Latitude <=-15)
+            r[["xlim"]] = c(-90,-50)
+            r[["ylim"]] = c(-50,-15)
         }
-        else if (input$select == 1)#Indonesia
+        else if (input$select == 2)#Indonesia
         {
-            copy = filter(x, Longitude>=-20 & Longitude <=20)
-            copy = filter(copy, Latitude>=25 & Latitude <=70)
-        }
-        else if (input$select == 1)#Italy
-        {
-            copy = filter(x, Longitude>=-20 & Longitude <=20)
-            copy = filter(copy, Latitude>=25 & Latitude <=70)
+            copy = filter(x, Longitude>=100 & Longitude <=170)
+            copy = filter(copy, Latitude>=-23 & Latitude <=23)
+            r[["xlim"]] = c(100,170)
+            r[["ylim"]] = c(-23,23)
         }
         else#Japan
         {
-            copy = filter(x, Longitude>=100 & Longitude <=200)
-            copy = filter(copy, Latitude>=-25 & Latitude <=25)
+            copy = filter(x, Longitude>=125 & Longitude <=150)
+            copy = filter(copy, Latitude>=25 & Latitude <=50)
+            r[["xlim"]] = c(125,150)
+            r[["ylim"]] = c(25,50)
         }
         
-        bw <- diag(c(1.25, 0.75))
-        kde <- ks::kde(x = copy, H = bw)
+        bw = diag(c(1, 1))
         
-        kde
+        if (nrow(copy) > 0)
+        {
+            kde = ks::kde(x = copy, H = bw)
+            r[["kde"]] = kde
+        }
+        
+        r
     })
     
-    # renderPlotly() also understands ggplot2 objects!
     output$plot <- renderPlotly({
         
         df = dataInput()
 
         g <- list(
-            #scope = 'usa',
-            #projection = list(type = 'albers usa'),
             showland = TRUE,
             landcolor = toRGB("gray85"),
             subunitwidth = 1,
@@ -152,23 +155,15 @@ server <- function(input, output) {
             countrycolor = toRGB("white")
         )
         
-        #locationmode = 'USA-states', 
         p <- plot_geo(df, width = 900, height = 500) %>%
             add_markers(
-                x = ~Longitude, y = ~Latitude, size = ~Magnitude, color = ~Depth, hoverinfo = "text", sizes = range(exp(df$Magnitude))/40,
-                text = ~paste(df$name, "<br /> Magnitude:", df$Magnitude, "<br />", df$Year, "<br />", df$Latitude, "<br />", df$Longitude),
+                x = ~Longitude, y = ~Latitude, size = ~Magnitude, color = ~Depth, colors = viridis(2)[c(2,1)],hoverinfo = "text", sizes = range(df$ScaledMagnitude),
+                text = ~paste(" Magnitude:", df$Magnitude, "<br /> Depth:", df$Depth, "<br /> Year:", df$Year),
                 brush = ~brushOpts("plot_brush")
             ) %>%
             layout(title = paste(nrow(df),"earquakes"), geo = g)
     })
 
-    output$event <- renderPrint({
-        d <- event_data("plotly_hover")
-        if (is.null(d)) "Select a point for more detail." else d
-    })
-
-    # listen to the brushing event and draw a
-    # rect shape that mimics the brush
     observe({
         brush <- event_data("plotly_brushing")
         
@@ -181,9 +176,6 @@ server <- function(input, output) {
             copy = filter(copy, Longitude>= brush$geo[1,1] & Longitude <= brush$geo[2,1])
             copy = filter(copy, Latitude>= brush$geo[2,2] & Latitude <= brush$geo[1,2])
             
-            #res <- brushedPoints(dataInput(), brush)
-            
-            #rint("res")
             print(paste("len",nrow(copy)))
             datatable(copy)
         }
@@ -201,17 +193,15 @@ server <- function(input, output) {
             copy = filter(copy, Magnitude>= min(as.numeric(input$slider2)) & Magnitude <= max(as.numeric(input$slider2)))
             copy = filter(copy, Longitude>= brush$geo[1,1] & Longitude <= brush$geo[2,1])
             copy = filter(copy, Latitude>= brush$geo[2,2] & Latitude <= brush$geo[1,2])
+            copy = copy[,-8]
             
-            #res <- brushedPoints(dataInput(), brush)
-
-            #rint("res")
             print(paste("len",nrow(copy)))
             datatable(copy)
         }
     })
     
     output$report <- downloadHandler(
-        # For PDF output, change this to "report.pdf"
+
         filename = "report.pdf",
         content = function(file) {
             
@@ -225,16 +215,11 @@ server <- function(input, output) {
                 copy = filter(copy, Magnitude>= min(as.numeric(input$slider2)) & Magnitude <= max(as.numeric(input$slider2)))
                 copy = filter(copy, Longitude>= brush$geo[1,1] & Longitude <= brush$geo[2,1])
                 copy = filter(copy, Latitude>= brush$geo[2,2] & Latitude <= brush$geo[1,2])
-                
-                # Copy the report file to a temporary directory before processing it, in
-                # case we don't have write permissions to the current working dir (which
-                # can happen when deployed).
+                copy = copy[,-8]
+
                 tempReport <- file.path(tempdir(), "report.Rmd")
                 file.copy("C:/Users/codef/Desktop/shinyapp/earthquakes/report.Rmd", tempReport, overwrite = TRUE)
                 
-                # Knit the document, passing in the `params` list, and eval it in a
-                # child of the global environment (this isolates the code in the document
-                # from the code in this app).
                 rmarkdown::render(tempReport, output_file = file,
                                   params = list(d = copy),
                                   envir = new.env(parent = globalenv())
@@ -246,15 +231,15 @@ server <- function(input, output) {
     
     output$plot1 <- renderPlot({
         
-        kde = kdeInput()
+        r = kdeInput()
         
-        plot(kde, main="Italy")
+        plot(r[["kde"]], main="Density Contours", ylim=r[["ylim"]], xlim=r[["xlim"]])
+        map("world",add=TRUE,col="ghostwhite",fill=TRUE)
+        plot(r[["kde"]], main="Density Contours", ylim=r[["ylim"]], xlim=r[["xlim"]],add=TRUE ,col="firebrick2")
         
-        #Plotting with base-graphics, then overlaying map
-        #plot(Latitude~Longitude,copy,pch=16,col="red",asp=1)
-        map("world",add=TRUE,col="gray",fill=FALSE)
-    })
+    }, height = 600, width = 600)
     
+
     output$value <- renderPrint({ input$select })
 }
 
@@ -262,9 +247,9 @@ server <- function(input, output) {
 ##########
 
 
-shinyApp(ui = ui, server = server, options = list(height = 600, width = 1200))
+shinyApp(ui = ui, server = server, options = list(height = 300, width = 600))
 
 
-runGitHub("shinyapp", "codefluence", subdir = "earthquakes")
+#runGitHub("shinyapp", "codefluence", subdir = "earthquakes")
 
 
